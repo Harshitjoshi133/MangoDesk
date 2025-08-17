@@ -31,7 +31,7 @@ export default function Home() {
     formData.append('custom_prompt', customPrompt);
 
     try {
-      const response = await fetch('http://localhost:8000/summarize', {
+      const response = await fetch('https://mangodesk-nc4e.onrender.com', {
         method: 'POST',
         body: formData,
       });
@@ -59,7 +59,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/send-email', {
+      const response = await fetch('https://mangodesk-nc4e.onrender.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
