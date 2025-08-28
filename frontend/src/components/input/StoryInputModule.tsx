@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 
-interface StoryInputModuleProps {}
+interface StoryInputModuleProps {
+  onStorySubmit: (prompt: string) => void;
+}
 
-export default function StoryInputModule({}: StoryInputModuleProps) {
-  const router = useRouter();
+export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProps) {
   const [storyPrompt, setStoryPrompt] = useState('');
   const [tone, setTone] = useState('Epic');
   const [visualStyle, setVisualStyle] = useState('Anime');
@@ -17,9 +17,7 @@ export default function StoryInputModule({}: StoryInputModuleProps) {
 
   const handleBeginWeaving = () => {
     if (storyPrompt.trim()) {
-      // Generate a unique story ID and navigate to the story page
-      const storyId = `story_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      router.push(`/story/${storyId}`);
+      onStorySubmit(storyPrompt);
     }
   };
 

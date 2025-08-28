@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import VisualDisplay from '../../../components/viewport/VisualDisplay';
 import NarrativeText from '../../../components/viewport/NarrativeText';
 import ChoicePanel from '../../../components/viewport/ChoicePanel';
@@ -15,6 +15,10 @@ interface StoryPageProps {
 
 export default function StoryPage({ params }: StoryPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const storyPrompt = searchParams.get('prompt') || 'Your story begins here...';
+  const modality = searchParams.get('modality') || 'interactive';
   
   // Mock data for demonstration
   const mockChoices = [
@@ -27,6 +31,21 @@ export default function StoryPage({ params }: StoryPageProps) {
     console.log('Selected choice:', choiceId);
     // TODO: Handle choice selection and story progression
   };
+
+  const getModalityInfo = () => {
+    switch (modality) {
+      case 'interactive':
+        return { title: 'Interactive Storytelling', icon: '🎮', color: 'violet' };
+      case 'visual':
+        return { title: 'Visual Storytelling', icon: '🎨', color: 'cyan' };
+      case 'audio':
+        return { title: 'Audio Narration', icon: '🎧', color: 'magenta' };
+      default:
+        return { title: 'Story Experience', icon: '📖', color: 'violet' };
+    }
+  };
+
+  const modalityInfo = getModalityInfo();
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-black relative overflow-hidden">
@@ -56,6 +75,11 @@ export default function StoryPage({ params }: StoryPageProps) {
             </motion.button>
             <div className="w-px h-6 bg-slate-600" />
             <span className="text-slate-400">Story ID: {params.storyId}</span>
+            <div className="w-px h-6 bg-slate-600" />
+            <span className={`text-${modalityInfo.color}-300 flex items-center space-x-2`}>
+              <span>{modalityInfo.icon}</span>
+              <span>{modalityInfo.title}</span>
+            </span>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -78,6 +102,17 @@ export default function StoryPage({ params }: StoryPageProps) {
 
             {/* Right Panel - Controls and Info */}
             <div className="space-y-6">
+              {/* Story Info */}
+              <motion.div
+                className="backdrop-blur-xl bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 shadow-2xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <h3 className="text-violet-300 font-semibold mb-2">Your Story:</h3>
+                <p className="text-slate-300 text-sm italic">"{storyPrompt}"</p>
+              </motion.div>
+
               {/* Audio Player */}
               <AudioPlayer
                 isPlaying={false}
