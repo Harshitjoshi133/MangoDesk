@@ -56,6 +56,12 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
             <textarea
               value={storyPrompt}
               onChange={(e) => setStoryPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleBeginWeaving();
+                }
+              }}
               placeholder="Describe your story idea, character, or the world you want to explore..."
               className="w-full h-32 bg-slate-900/50 border border-slate-600/50 rounded-xl p-6 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 resize-none backdrop-blur-sm"
               style={{

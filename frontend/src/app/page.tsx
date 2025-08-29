@@ -21,7 +21,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-950">
+    <main className="min-h-screen relative overflow-y-auto bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-950">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Floating Particles */}
@@ -99,7 +99,7 @@ export default function Home() {
         />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-[calc(100vh-6rem)]">
         {/* Header Section */}
         <motion.div 
           className="text-center mb-16"
