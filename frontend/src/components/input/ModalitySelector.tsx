@@ -80,7 +80,7 @@ export default function ModalitySelector({ storyPrompt, onModalitySelect }: Moda
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <h3 className="text-violet-300 font-semibold mb-2">Your Story:</h3>
-          <p className="text-slate-300 italic">"{storyPrompt}"</p>
+          <p className="text-slate-300 italic break-words whitespace-normal overflow-wrap-anywhere">"{storyPrompt}"</p>
         </motion.div>
       </motion.div>
 

@@ -33,7 +33,7 @@ export default function ChoicePanel({ choices, onChoiceSelect, isLoading = false
           <span className="ml-3 text-slate-400">Generating choices...</span>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto max-h-64 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800 pr-2">
           {choices.map((choice, index) => (
             <motion.button
               key={choice.id}

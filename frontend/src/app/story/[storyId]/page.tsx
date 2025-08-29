@@ -251,7 +251,7 @@ export default function StoryPage({ params }: StoryPageProps) {
         </motion.div>
 
         {/* Main Content Area */}
-        <div className="flex-1 relative p-6">
+        <div className="flex-1 relative p-6 overflow-hidden">
           <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Visual Display - Takes up 2/3 of the screen on large displays */}
             <div className="lg:col-span-2 h-full">
@@ -266,7 +266,7 @@ export default function StoryPage({ params }: StoryPageProps) {
             </div>
 
             {/* Right Panel - Controls and Info */}
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto max-h-full pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
               {/* Story Info */}
               <motion.div
                 className="backdrop-blur-xl bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 shadow-2xl"
@@ -275,12 +275,12 @@ export default function StoryPage({ params }: StoryPageProps) {
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
                 <h3 className="text-violet-300 font-semibold mb-2">Your Story:</h3>
-                <p className="text-slate-300 text-sm italic">"{storyPrompt}"</p>
+                <p className="text-slate-300 text-sm italic break-words whitespace-normal overflow-wrap-anywhere">"{storyPrompt}"</p>
               </motion.div>
 
               {/* Error Message */}
               {error && (
-                <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded">
+                <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded overflow-y-auto max-h-32 scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900">
                   {error}
                 </div>
               )}
