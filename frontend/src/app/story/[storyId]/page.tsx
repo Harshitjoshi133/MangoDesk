@@ -1,7 +1,10 @@
 "use client";
 
-import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { storyApi } from '../../../lib/api';
+import { StoryInput, StorySegment, StoryType } from '../../../types/story';
 import VisualDisplay from '../../../components/viewport/VisualDisplay';
 import NarrativeText from '../../../components/viewport/NarrativeText';
 import ChoicePanel from '../../../components/viewport/ChoicePanel';
@@ -16,20 +19,178 @@ interface StoryPageProps {
 export default function StoryPage({ params }: StoryPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [currentSegment, setCurrentSegment] = useState<StorySegment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   const storyPrompt = searchParams.get('prompt') || 'Your story begins here...';
   const modality = searchParams.get('modality') || 'interactive';
-  
-  // Mock data for demonstration
-  const mockChoices = [
-    { id: '1', text: 'Explore the ancient ruins' },
-    { id: '2', text: 'Follow the mysterious light' },
-    { id: '3', text: 'Return to the village' }
-  ];
+  const tone = searchParams.get('tone') || 'mysterious';
+  const visualStyle = searchParams.get('visualStyle') || 'fantasy';
 
-  const handleChoiceSelect = (choiceId: string) => {
-    console.log('Selected choice:', choiceId);
-    // TODO: Handle choice selection and story progression
+  // Map modality to valid story types (case-insensitive)
+  const getStoryType = (modality: string): StoryType => {
+    const lowerModality = modality.toLowerCase();
+    
+    // First check for exact matches
+    if (lowerModality === 'folk' || lowerModality === 'folk_tale') return 'folk_tale';
+    if (lowerModality === 'historical') return 'historical';
+    if (lowerModality === 'myth' || lowerModality === 'mythology') return 'mythology';
+    if (lowerModality === 'cultural' || lowerModality === 'cultural_tradition') return 'cultural_tradition';
+    
+    // Then check for partial matches
+    if (lowerModality.includes('folk')) return 'folk_tale';
+    if (lowerModality.includes('hist')) return 'historical';
+    if (lowerModality.includes('myth')) return 'mythology';
+    if (lowerModality.includes('cult')) return 'cultural_tradition';
+    
+    // Default to folk_tale for any other case
+    return 'folk_tale';
+  };
+
+  // Cleanup audio element on unmount
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        URL.revokeObjectURL(audioElement.src);
+      }
+    };
+  }, [audioElement]);
+
+  const handleAudioPlay = async () => {
+    if (!currentSegment) return;
+
+    // If we already have an audio URL, just play it
+    if (currentSegment.audioUrl) {
+      const audio = new Audio(currentSegment.audioUrl);
+      audio.play().catch(err => {
+        console.error('Error playing audio:', err);
+        setError('Failed to play audio');
+      });
+      setAudioElement(audio);
+      setIsAudioPlaying(true);
+      return;
+    }
+
+    // Generate and play new audio
+    try {
+      setIsLoading(true);
+      const audioUrl = await storyApi.generateAudio(currentSegment.text);
+      const audio = new Audio(audioUrl);
+      
+      audio.onplay = () => setIsAudioPlaying(true);
+      audio.onpause = () => setIsAudioPlaying(false);
+      audio.onended = () => setIsAudioPlaying(false);
+      
+      await audio.play();
+      
+      setCurrentSegment(prev => prev ? { ...prev, audioUrl } : null);
+      setAudioElement(audio);
+    } catch (err) {
+      console.error('Error generating/playing audio:', err);
+      setError('Failed to generate audio');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAudioPause = () => {
+    if (audioElement) {
+      audioElement.pause();
+      setIsAudioPlaying(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initStory = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const storyType = getStoryType(modality);
+        console.log('Modality:', modality, 'Mapped story type:', storyType);
+        
+        const storyInput: StoryInput = {
+          prompt: storyPrompt,
+          tone,
+          visualStyle,
+          story_type: storyType,
+        };
+        
+        console.log('Calling generateInitialSegment with:', storyInput);
+        const segment = await storyApi.generateInitialSegment(storyInput);
+        console.log('Received segment:', segment);
+        
+        if (isMounted) {
+          setCurrentSegment(segment);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } catch (error) {
+        console.error('Error initializing story:', error);
+        if (isMounted) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to start the story';
+          setError(`Error: ${errorMessage}. Please try again.`);
+          
+          // Set a fallback segment with error information
+          setCurrentSegment({
+            id: 'error-' + Date.now(),
+            text: `Error: ${errorMessage}. Please try again or refresh the page.`,
+            imageUrl: '',
+            audioUrl: '',
+            choices: [
+              { id: 'retry', text: 'Retry' },
+              { id: 'home', text: 'Go to Home' }
+            ]
+          });
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initStory();
+    
+    return () => {
+      isMounted = false;
+      // Clean up any audio elements
+      if (audioElement) {
+        audioElement.pause();
+        URL.revokeObjectURL(audioElement.src);
+      }
+    };
+  }, [storyPrompt, tone, visualStyle, modality]);
+
+  const handleChoiceSelect = async (choiceId: string) => {
+    if (!currentSegment?.id) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Pause any currently playing audio
+      if (audioElement) {
+        audioElement.pause();
+        setIsAudioPlaying(false);
+      }
+      
+      const segment = await storyApi.generateNextSegment(choiceId, currentSegment.id);
+      setCurrentSegment(segment);
+      
+      // Scroll to top of the content when new segment loads
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Error processing choice:', err);
+      setError('Failed to process your choice. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getModalityInfo = () => {
@@ -95,8 +256,12 @@ export default function StoryPage({ params }: StoryPageProps) {
             {/* Visual Display - Takes up 2/3 of the screen on large displays */}
             <div className="lg:col-span-2 h-full">
               <VisualDisplay 
-                imageUrl="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop"
-                isLoading={false}
+                imageUrl={currentSegment?.imageUrl}
+                isLoading={isLoading}
+                onImageError={() => {
+                  // Handle image loading error
+                  console.error('Failed to load story image');
+                }}
               />
             </div>
 
@@ -113,27 +278,39 @@ export default function StoryPage({ params }: StoryPageProps) {
                 <p className="text-slate-300 text-sm italic">"{storyPrompt}"</p>
               </motion.div>
 
+              {/* Error Message */}
+              {error && (
+                <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded">
+                  {error}
+                </div>
+              )}
+
               {/* Audio Player */}
               <AudioPlayer
-                isPlaying={false}
-                currentTime={45}
-                duration={180}
-                onPlay={() => console.log('Play audio')}
-                onPause={() => console.log('Pause audio')}
-                onSeek={(time) => console.log('Seek to:', time)}
+                audioUrl={currentSegment?.audioUrl}
+                isPlaying={isAudioPlaying}
+                currentTime={audioElement?.currentTime || 0}
+                duration={audioElement?.duration || 0}
+                onPlay={handleAudioPlay}
+                onPause={handleAudioPause}
+                onSeek={(time) => {
+                  if (audioElement) {
+                    audioElement.currentTime = time;
+                  }
+                }}
               />
 
               {/* Narrative Text */}
               <NarrativeText
-                text="As you stand at the crossroads of destiny, the ancient stones whisper secrets of forgotten times. The path before you splits into three, each leading to a different fate. Your choice will shape not just your journey, but the very fabric of this mystical realm."
-                isTyping={false}
+                text={currentSegment?.text || "Loading your story..."}
+                isTyping={isLoading}
               />
 
               {/* Choice Panel */}
               <ChoicePanel
-                choices={mockChoices}
+                choices={currentSegment?.choices || []}
                 onChoiceSelect={handleChoiceSelect}
-                isLoading={false}
+                isLoading={isLoading}
               />
             </div>
           </div>

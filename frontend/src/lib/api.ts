@@ -1,66 +1,267 @@
 import { StoryInput, StorySegment } from '../types/story';
 
-// TODO: Replace with actual API endpoints
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
+// Helper function to handle API requests
+async function fetchAPI(endpoint: string, options: RequestInit = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`Making API request to: ${url}`, { 
+    method: options.method, 
+    headers: options.headers,
+    body: options.body ? JSON.parse(options.body as string) : undefined
+  });
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...options.headers,
+      },
+      credentials: 'include',
+    });
+
+    console.log(`Response status: ${response.status} ${response.statusText}`, { url });
+    
+    if (!response.ok) {
+      let errorData;
+      const responseText = await response.text();
+      console.error(`API Error (${response.status} ${response.statusText}):`, responseText);
+      
+      try {
+        errorData = JSON.parse(responseText);
+        console.error('Parsed error data:', errorData);
+      } catch (e) {
+        console.error('Failed to parse error response as JSON');
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}\n${responseText}`);
+      }
+      
+      const errorMessage = errorData.detail || 
+                         errorData.message || 
+                         `HTTP error! status: ${response.status} ${response.statusText}`;
+      console.error('Error message:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Handle empty responses
+    const text = await response.text();
+    if (!text) return {};
+    
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse JSON response:', { text, error: e });
+      throw new Error('Invalid JSON response from server');
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown network or API error';
+    console.error('Network or API error:', error);
+    throw new Error(`Failed to fetch from API: ${errorMessage}`);
+  }
+}
 
 export const storyApi = {
-  // Generate initial story segment based on user input
+  // Start a new interactive story session
   async generateInitialSegment(storyInput: StoryInput): Promise<StorySegment> {
-    // TODO: Implement actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          id: '1',
-          text: `Based on your prompt about "${storyInput.prompt}", the story begins with a ${storyInput.tone.toLowerCase()} tone and ${storyInput.visualStyle.toLowerCase()} visual style. The adventure awaits...`,
-          imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
-          audioUrl: '', // TODO: Generate TTS audio
-          choices: [
-            { id: '1', text: 'Begin the journey' },
-            { id: '2', text: 'Explore the surroundings' },
-            { id: '3', text: 'Gather more information' }
-          ]
-        });
-      }, 2000); // Simulate API delay
-    });
+    try {
+      console.log('Starting new story with input:', storyInput);
+      
+      // First, create a new story
+      console.log('Creating story with input:', {
+        title: storyInput.prompt,
+        content: storyInput.prompt,
+        story_type: storyInput.story_type,
+        culture: 'general',
+        language: 'en',
+        target_age_group: 'all'
+      });
+      
+      const storyResponse = await fetchAPI('/stories/create', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: storyInput.prompt,
+          content: storyInput.prompt,
+          story_type: storyInput.story_type,
+          tone: storyInput.tone,
+          visual_style: storyInput.visualStyle,
+          language: 'en',
+          culture: 'general',
+          target_age_group: 'all',
+          tags: []
+        }),
+      });
+      
+      console.log('Story created:', storyResponse);
+      
+      if (!storyResponse.story_id) {
+        throw new Error('Invalid story response: missing story_id');
+      }
+
+      // Start an interactive session
+      console.log('Starting interactive session for story:', storyResponse.story_id);
+      const sessionResponse = await fetchAPI(`/interactive/start/${storyResponse.story_id}`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      
+      console.log('Interactive session started:', sessionResponse);
+      
+      if (!sessionResponse.session_id) {
+        throw new Error('Invalid session response: missing session_id');
+      }
+
+      // Generate initial image based on the first scene
+      let imageUrl = '';
+      try {
+        imageUrl = await this.generateImage(
+          `Create an image for a story with this description: ${storyInput.prompt}`,
+          storyInput.visualStyle
+        );
+      } catch (error) {
+        console.error('Error generating image:', error);
+        // Continue without image if generation fails
+      }
+
+      // Map the response to the StorySegment type
+      return {
+        id: sessionResponse.session_id,
+        text: sessionResponse.current_scene || storyResponse.enhanced_content || 'Welcome to your interactive story!',
+        imageUrl: imageUrl,
+        audioUrl: '', // Will be generated by the client if needed
+        choices: sessionResponse.current_choices?.map((choice: any) => ({
+          id: choice.choice_id,
+          text: choice.choice_text
+        })) || storyResponse.choices?.map((choice: any, index: number) => ({
+          id: choice.choice_id || `choice-${index}`,
+          text: choice.choice_text || `Choice ${index + 1}`
+        })) || [
+          { id: '1', text: 'Begin the story' },
+          { id: '2', text: 'Learn more' },
+          { id: '3', text: 'Skip ahead' }
+        ]
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error('Error generating initial segment:', error);
+      // Return a fallback response if the API call fails
+      return {
+        id: 'fallback-' + Date.now(),
+        text: `Error: Could not connect to the story server. Please try again later. (${errorMessage})`,
+        imageUrl: '',
+        audioUrl: '',
+        choices: [
+          { id: 'retry', text: 'Retry' },
+          { id: 'exit', text: 'Exit' }
+        ]
+      };
+    }
   },
 
   // Generate next story segment based on user choice
-  async generateNextSegment(choiceId: string, storyContext: any): Promise<StorySegment> {
-    // TODO: Implement actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          id: (parseInt(storyContext.currentSegmentId) + 1).toString(),
-          text: 'The story continues based on your choice. New paths unfold before you...',
-          imageUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop',
-          audioUrl: '', // TODO: Generate TTS audio
-          choices: [
-            { id: '1', text: 'Continue forward' },
-            { id: '2', text: 'Take a different path' },
-            { id: '3', text: 'Investigate further' }
-          ]
-        });
-      }, 1500); // Simulate API delay
-    });
+  async generateNextSegment(choiceId: string, sessionId: string): Promise<StorySegment> {
+    try {
+      console.log('Making choice:', { choiceId, sessionId });
+      
+      const response = await fetchAPI(`/interactive/choice`, {
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: sessionId,
+          choice_id: choiceId,
+        }),
+      });
+      console.log('Received response for choice:', response);
+
+      // Generate image for the new scene if needed
+      const imageUrl = response.updated_scene 
+        ? await this.generateImage(
+            `Create an image for this story scene: ${response.updated_scene.substring(0, 200)}`,
+            'vivid' // Default style, can be customized
+          )
+        : '';
+
+      return {
+        id: sessionId, // Keep the same session ID
+        text: response.updated_scene || 'The story continues...',
+        imageUrl: imageUrl || response.image_url || '',
+        audioUrl: response.audio_url || '',
+        choices: response.available_choices?.map((choice: any, index: number) => ({
+          id: choice.id || `choice-${index}`,
+          text: choice.text || `Option ${index + 1}`,
+        })) || [
+          { id: 'continue', text: 'Continue' },
+          { id: 'back', text: 'Go back' }
+        ],
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error('Error generating next segment:', error);
+      // Return a fallback response if the API call fails
+      return {
+        id: sessionId,
+        text: `Error: Could not process your choice. (${errorMessage})`,
+        imageUrl: '',
+        audioUrl: '',
+        choices: [
+          { id: 'retry', text: 'Try again' },
+          { id: 'restart', text: 'Start over' }
+        ]
+      };
+    }
   },
 
   // Generate TTS audio for story text
   async generateAudio(text: string, voice: string = 'default'): Promise<string> {
-    // TODO: Implement actual TTS API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve('https://example.com/audio.mp3'); // Placeholder audio URL
-      }, 1000);
-    });
+    if (!text) return '';
+    
+    try {
+      console.log('Generating audio for text:', text.substring(0, 50) + '...');
+      const response = await fetchAPI('/media/generate-audio', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          text: text,
+          voice: voice,
+          speed: 1.0,
+          pitch: 0.0
+        }),
+      });
+      
+      const audioUrl = response.audio_url || response.url || '';
+      if (audioUrl) {
+        console.log('Generated audio URL:', audioUrl);
+      }
+      return audioUrl;
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      return '';
+    }
   },
 
   // Generate image based on story description
-  async generateImage(prompt: string, style: string): Promise<string> {
-    // TODO: Implement actual image generation API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop');
-      }, 2000);
-    });
+  async generateImage(prompt: string, style: string = 'vivid'): Promise<string> {
+    if (!prompt) return '';
+    
+    try {
+      console.log('Generating image with prompt:', prompt.substring(0, 100) + '...');
+      const response = await fetchAPI('/media/generate-image', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          prompt: prompt,
+          style: style,
+          size: '1024x1024',
+          quality: 'standard',
+          n: 1
+        }),
+      });
+      
+      const imageUrl = response.image_url || response.url || response.data?.[0]?.url || '';
+      if (imageUrl) {
+        console.log('Generated image URL:', imageUrl);
+      }
+      return imageUrl;
+    } catch (error) {
+      console.error('Error generating image:', error);
+      return '';
+    }
   }
 };

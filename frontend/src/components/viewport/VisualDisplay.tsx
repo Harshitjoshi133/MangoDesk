@@ -5,9 +5,14 @@ import { motion } from 'framer-motion';
 interface VisualDisplayProps {
   imageUrl?: string;
   isLoading?: boolean;
+  onImageError?: () => void;
 }
 
-export default function VisualDisplay({ imageUrl, isLoading = false }: VisualDisplayProps) {
+export default function VisualDisplay({ 
+  imageUrl, 
+  isLoading = false, 
+  onImageError 
+}: VisualDisplayProps) {
   return (
     <motion.div
       className="relative w-full h-full min-h-[400px] bg-slate-800/50 rounded-2xl border border-slate-700/50 overflow-hidden backdrop-blur-sm"
@@ -28,6 +33,7 @@ export default function VisualDisplay({ imageUrl, isLoading = false }: VisualDis
           src={imageUrl}
           alt="Story visualization"
           className="w-full h-full object-cover"
+          onError={onImageError}
         />
       ) : (
         <div className="flex items-center justify-center h-full text-slate-500">
