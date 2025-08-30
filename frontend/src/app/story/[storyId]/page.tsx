@@ -242,12 +242,6 @@ export default function StoryPage({ params }: StoryPageProps) {
               <span>{modalityInfo.title}</span>
             </span>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            <span className="text-cyan-300 text-sm">🎵</span>
-            <span className="text-magenta-300 text-sm">🎨</span>
-            <span className="text-violet-300 text-sm">⚙️</span>
-          </div>
         </motion.div>
 
         {/* Main Content Area */}

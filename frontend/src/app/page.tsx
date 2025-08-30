@@ -176,15 +176,6 @@ export default function Home() {
               transition={{ duration: 2, delay: 0.5 }}
             />
           </motion.div>
-          
-          <motion.p 
-            className="text-xl md:text-2xl text-slate-300 max-w-4xl mx-auto leading-relaxed"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-          >
-            Where your imagination meets AI to weave legends that transcend time and culture
-          </motion.p>
         </motion.div>
 
         {/* Step-based Content */}
