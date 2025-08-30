@@ -9,7 +9,7 @@ class VisualService:
         self.stability_api_key = config('STABILITY_API_KEY', default='')
         
     async def generate_image(self, description: str, output_path: str, style: str = "illustration"):
-        """Generate cultural artwork based on story descriptions"""
+        """Generate cultural artwork based on story descriptions using Stability AI's SD3.5 model"""
         try:
             # Style-specific prompts
             style_prompts = {
@@ -21,43 +21,34 @@ class VisualService:
             
             enhanced_prompt = f"{description}, {style_prompts.get(style, style_prompts['illustration'])}, high quality, culturally authentic"
             
-            # Using Stability AI API (you can replace with other services)
-            url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
+            if not self.stability_api_key:
+                raise ValueError("Stability API key is not configured")
+                
+            # Using Stability AI's SD3.5 model
+            url = "https://api.stability.ai/v2beta/stable-image/generate/sd3"
             
             headers = {
-                "Authorization": f"Bearer {self.stability_api_key}",
-                "Content-Type": "application/json"
+                "authorization": f"Bearer {self.stability_api_key}",
+                "accept": "image/*"
             }
             
-            payload = {
-                "text_prompts": [
-                    {
-                        "text": enhanced_prompt,
-                        "weight": 1
-                    }
-                ],
-                "cfg_scale": 7,
-                "height": 1024,
-                "width": 1024,
-                "samples": 1,
-                "steps": 30
+            data = {
+                "prompt": enhanced_prompt,
+                "model": "sd3.5-flash",
+                "output_format": "jpeg"
             }
             
-            if self.stability_api_key:
-                response = requests.post(url, json=payload, headers=headers)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    image_data = data["artifacts"][0]["base64"]
-                    
-                    # Decode and save image
-                    import base64
-                    image_bytes = base64.b64decode(image_data)
-                    
-                    async with aiofiles.open(output_path, 'wb') as f:
-                        await f.write(image_bytes)
-                    
-                    return True
+            response = requests.post(
+                url,
+                headers=headers,
+                files={"none": ''},  # Required by the API
+                data=data
+            )
+            
+            if response.status_code == 200:
+                async with aiofiles.open(output_path, 'wb') as f:
+                    await f.write(response.content)
+                return True
             
             # Fallback: Create a placeholder image
             await self._create_placeholder_image(output_path, description)
