@@ -242,24 +242,23 @@ export default function StoryPage({ params }: StoryPageProps) {
           </div>
         </motion.div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full p-6 overflow-y-auto">
-            <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content Area - Single scrollable container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="min-h-full p-6">
+            <div className="min-h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Visual Display - Takes up 2/3 of the screen on large displays */}
-              <div className="lg:col-span-2 h-full">
+              <div className="lg:col-span-2">
                 <VisualDisplay 
                   imageUrl={currentSegment?.imageUrl}
                   isLoading={isLoading}
                   onImageError={() => {
-                    // Handle image loading error
                     console.error('Failed to load story image');
                   }}
                 />
               </div>
 
               {/* Right Panel - Controls and Info */}
-              <div className="space-y-6 pr-2">
+              <div className="space-y-6">
                 {/* Story Info */}
                 <motion.div
                   className="backdrop-blur-xl bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 shadow-2xl"
@@ -273,7 +272,7 @@ export default function StoryPage({ params }: StoryPageProps) {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded overflow-y-auto max-h-32 scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900">
+                  <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded">
                     {error}
                   </div>
                 )}
@@ -294,7 +293,7 @@ export default function StoryPage({ params }: StoryPageProps) {
                 />
 
                 {/* Narrative Text */}
-                <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
+                <div className="min-h-[200px]">
                   <NarrativeText
                     text={currentSegment?.text || "Loading your story..."}
                     isTyping={isLoading}
@@ -302,11 +301,13 @@ export default function StoryPage({ params }: StoryPageProps) {
                 </div>
 
                 {/* Choice Panel */}
-                <ChoicePanel
-                  choices={currentSegment?.choices || []}
-                  onChoiceSelect={handleChoiceSelect}
-                  isLoading={isLoading}
-                />
+                <div className="pb-6">
+                  <ChoicePanel
+                    choices={currentSegment?.choices || []}
+                    onChoiceSelect={handleChoiceSelect}
+                    isLoading={isLoading}
+                  />
+                </div>
               </div>
             </div>
           </div>
