@@ -107,7 +107,7 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
 
           {/* Visual Style Selection */}
           <div>
-            <label className="block text-magenta-300 font-semibold mb-3">
+            <label className="block text-rose-300 font-semibold mb-3">
               Visual Style
             </label>
             <div className="flex flex-wrap gap-2">
@@ -117,8 +117,8 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
                   onClick={() => setVisualStyle(style)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     visualStyle === style
-                      ? 'bg-magenta-500/20 border border-magenta-400/50 text-magenta-300 shadow-lg shadow-magenta-500/20'
-                      : 'bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:border-magenta-400/30 hover:text-magenta-200'
+                      ? 'bg-rose-500/20 border border-rose-400/50 text-rose-300 shadow-lg shadow-rose-500/20'
+                      : 'bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:border-rose-400/30 hover:text-rose-200 hover:bg-rose-500/10'
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
