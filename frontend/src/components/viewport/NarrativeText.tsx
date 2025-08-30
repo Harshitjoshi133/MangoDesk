@@ -32,7 +32,7 @@ export default function NarrativeText({ text, isTyping = false }: NarrativeTextP
           </motion.span>
         ) : (
           <span>{text}</span>
-        )}
+        )} 
       </div>
     </motion.div>
   );
