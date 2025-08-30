@@ -24,7 +24,7 @@ export default function ModalitySelector({ storyPrompt, onModalitySelect }: Moda
     {
       id: 'interactive',
       title: 'Interactive Storytelling',
-      description: 'Choose your own adventure with branching narratives and dynamic choices',
+      description: 'Choose your adventure with branching choices.',
       icon: '🎮',
       color: 'violet',
       gradient: 'from-violet-600 to-purple-600'
