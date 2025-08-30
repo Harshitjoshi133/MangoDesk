@@ -42,8 +42,8 @@ export default function ModalitySelector({ storyPrompt, onModalitySelect }: Moda
       title: 'Audio Narration',
       description: 'Experience rich audio storytelling with emotion and authentic voices',
       icon: '🎧',
-      color: 'magenta',
-      gradient: 'from-magenta-600 to-pink-600'
+      color: 'pink',
+      gradient: 'from-pink-500 to-rose-500'
     }
   ];
 
@@ -96,28 +96,23 @@ export default function ModalitySelector({ storyPrompt, onModalitySelect }: Moda
             onClick={() => handleModalitySelect(modality)}
           >
             <motion.div
-              className={`backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl p-8 h-full transition-all duration-300 group-hover:border-${modality.color}-500/50 group-hover:shadow-2xl group-hover:shadow-${modality.color}-500/20`}
+              className={`backdrop-blur-xl bg-slate-800/30 border-2 border-slate-700/50 rounded-2xl p-8 h-full transition-all duration-300 group-hover:border-${modality.color}-500/80 group-hover:shadow-2xl group-hover:shadow-${modality.color}-500/30 relative overflow-hidden`}
               whileHover={{ scale: 1.02 }}
+              initial={false}
               whileTap={{ scale: 0.98 }}
             >
               {/* Icon */}
-              <motion.div
-                className={`text-6xl mb-6 text-center group-hover:scale-110 transition-transform duration-300`}
-                whileHover={{ rotate: [0, -10, 10, 0] }}
-                transition={{ duration: 0.5 }}
-              >
-                {modality.icon}
-              </motion.div>
+              <div className="text-5xl mb-6 relative z-10">{modality.icon}</div>
 
               {/* Title */}
-              <h3 className={`text-2xl font-bold text-${modality.color}-300 mb-4 text-center group-hover:text-${modality.color}-200 transition-colors duration-300`}>
-                {modality.title}
-              </h3>
-
-              {/* Description */}
-              <p className="text-slate-300 text-center leading-relaxed mb-6">
-                {modality.description}
-              </p>
+              <div className="relative z-10">
+                <h3 className={`text-2xl font-bold text-${modality.color}-300 mb-3 text-center group-hover:text-${modality.color}-200 transition-colors duration-300`}>
+                  {modality.title}
+                </h3>
+                <p className="text-slate-300 text-center leading-relaxed mb-6">
+                  {modality.description}
+                </p>
+              </div>
 
               {/* Action Button */}
               <motion.div className="text-center">
@@ -133,6 +128,11 @@ export default function ModalitySelector({ storyPrompt, onModalitySelect }: Moda
               {/* Hover Glow Effect */}
               <motion.div
                 className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${modality.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none`}
+                initial={false}
+              />
+              {/* Subtle gradient overlay on hover */}
+              <motion.div 
+                className={`absolute inset-0 bg-gradient-to-br from-${modality.color}-500/5 via-transparent to-${modality.color}-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
                 initial={false}
               />
             </motion.div>
