@@ -5,12 +5,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 // Helper function to handle API requests
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
-  console.log(`Making API request to: ${url}`, { 
-    method: options.method, 
-    headers: options.headers,
-    body: options.body ? JSON.parse(options.body as string) : undefined
-  });
-  
   try {
     const response = await fetch(url, {
       ...options,
@@ -22,18 +16,13 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
       credentials: 'include',
     });
 
-    console.log(`Response status: ${response.status} ${response.statusText}`, { url });
     
     if (!response.ok) {
       let errorData;
       const responseText = await response.text();
-      console.error(`API Error (${response.status} ${response.statusText}):`, responseText);
-      
       try {
         errorData = JSON.parse(responseText);
-        console.error('Parsed error data:', errorData);
       } catch (e) {
-        console.error('Failed to parse error response as JSON');
         throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}\n${responseText}`);
       }
       
@@ -51,12 +40,10 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     try {
       return JSON.parse(text);
     } catch (e) {
-      console.error('Failed to parse JSON response:', { text, error: e });
       throw new Error('Invalid JSON response from server');
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown network or API error';
-    console.error('Network or API error:', error);
     throw new Error(`Failed to fetch from API: ${errorMessage}`);
   }
 }
@@ -64,19 +51,7 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 export const storyApi = {
   // Start a new interactive story session
   async generateInitialSegment(storyInput: StoryInput): Promise<StorySegment> {
-    try {
-      console.log('Starting new story with input:', storyInput);
-      
-      // First, create a new story
-      console.log('Creating story with input:', {
-        title: storyInput.prompt,
-        content: storyInput.prompt,
-        story_type: storyInput.story_type,
-        culture: 'general',
-        language: 'en',
-        target_age_group: 'all'
-      });
-      
+    try { 
       const storyResponse = await fetchAPI('/stories/create', {
         method: 'POST',
         body: JSON.stringify({
@@ -92,21 +67,16 @@ export const storyApi = {
         }),
       });
       
-      console.log('Story created:', storyResponse);
-      
       if (!storyResponse.story_id) {
         throw new Error('Invalid story response: missing story_id');
       }
 
       // Start an interactive session
-      console.log('Starting interactive session for story:', storyResponse.story_id);
       const sessionResponse = await fetchAPI(`/interactive/start/${storyResponse.story_id}`, {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      
-      console.log('Interactive session started:', sessionResponse);
-      
+         
       if (!sessionResponse.session_id) {
         throw new Error('Invalid session response: missing session_id');
       }
@@ -161,8 +131,6 @@ export const storyApi = {
   // Generate next story segment based on user choice
   async generateNextSegment(choiceId: string, sessionId: string): Promise<StorySegment> {
     try {
-      console.log('Making choice:', { choiceId, sessionId });
-      
       const response = await fetchAPI(`/interactive/choice`, {
         method: 'POST',
         body: JSON.stringify({
@@ -170,8 +138,6 @@ export const storyApi = {
           choice_id: choiceId,
         }),
       });
-      console.log('Received response for choice:', response);
-
       // Generate image for the new scene if needed
       const imageUrl = response.updated_scene 
         ? await this.generateImage(
@@ -211,26 +177,25 @@ export const storyApi = {
   },
 
   // Generate TTS audio for story text
-  async generateAudio(text: string, voice: string = 'default'): Promise<string> {
+  async generateAudio(text: string, voiceStyle: string = 'narrative'): Promise<string> {
     if (!text) return '';
     
     try {
-      console.log('Generating audio for text:', text.substring(0, 50) + '...');
       const response = await fetchAPI('/media/generate-audio', {
         method: 'POST',
         body: JSON.stringify({ 
           text: text,
-          voice: voice,
-          speed: 1.0,
-          pitch: 0.0
+          voice_style: voiceStyle,
+          language: 'en',
+          accent: 'us'
         }),
       });
-      
-      const audioUrl = response.audio_url || response.url || '';
-      if (audioUrl) {
-        console.log('Generated audio URL:', audioUrl);
+      console.log(response);
+      const audioId = response.audio_id || '';
+      if (audioId) {
+        return `${API_BASE_URL}/media/audio/${audioId}.mp3`;
       }
-      return audioUrl;
+      return '';
     } catch (error) {
       console.error('Error generating audio:', error);
       return '';
@@ -238,27 +203,24 @@ export const storyApi = {
   },
 
   // Generate image based on story description
-  async generateImage(prompt: string, style: string = 'vivid'): Promise<string> {
-    if (!prompt) return '';
+  async generateImage(description: string, style: string = 'illustration'): Promise<string> {
+    if (!description) return '';
     
     try {
-      console.log('Generating image with prompt:', prompt.substring(0, 100) + '...');
-      const response = await fetchAPI('/media/generate-image', {
+      const response = await fetchAPI('/media/generate-visual', {
         method: 'POST',
         body: JSON.stringify({ 
-          prompt: prompt,
-          style: style,
-          size: '1024x1024',
-          quality: 'standard',
-          n: 1
+          description:"String",
+          story_context: description,
+          style: "illustration"
         }),
       });
       
-      const imageUrl = response.image_url || response.url || response.data?.[0]?.url || '';
-      if (imageUrl) {
-        console.log('Generated image URL:', imageUrl);
+      const imageId = response.image_id || '';
+      if (imageId) {
+        return `${API_BASE_URL}/media/image/image_${imageId}.png`;
       }
-      return imageUrl;
+      return '';
     } catch (error) {
       console.error('Error generating image:', error);
       return '';
