@@ -79,56 +79,56 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
           </motion.div>
         </div>
 
-        {/* Parameter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Tone Selection */}
-          <div>
-            <label className="block text-cyan-300 font-semibold mb-3">
-              Tone
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {tones.map((toneOption) => (
-                <motion.button
-                  key={toneOption}
-                  onClick={() => setTone(toneOption)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    tone === toneOption
-                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 shadow-lg shadow-cyan-500/20'
-                      : 'bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:border-cyan-400/30 hover:text-cyan-200'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {toneOption}
-                </motion.button>
-              ))}
-            </div>
-          </div>
+    {/* Parameter Controls */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+  {/* Tone Selection (Cyan Color) */}
+  <div>
+    <label className="block text-cyan-300 font-semibold mb-3">
+      Tone
+    </label>
+    <div className="flex flex-wrap gap-2">
+      {tones.map((toneOption) => (
+        <motion.button
+          key={toneOption}
+          onClick={() => setTone(toneOption)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            tone === toneOption
+              ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 shadow-lg shadow-cyan-500/20'
+              : 'bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:border-cyan-400/30 hover:text-cyan-200'
+          }`}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {toneOption}
+        </motion.button>
+      ))}
+    </div>
+  </div>
 
-          {/* Visual Style Selection */}
-          <div>
-            <label className="block text-rose-300 font-semibold mb-3">
-              Visual Style
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {visualStyles.map((style) => (
-                <motion.button
-                  key={style}
-                  onClick={() => setVisualStyle(style)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    visualStyle === style
-                      ? 'bg-rose-500/20 border border-rose-400/50 text-rose-300 shadow-lg shadow-rose-500/20'
-                      : 'bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:border-rose-400/30 hover:text-rose-200 hover:bg-rose-500/10'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {style}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </div>
+  {/* Visual Style Selection (Rose Color) */}
+  <div>
+    <label className="block text-rose-300 font-semibold mb-3">
+      Visual Style
+    </label>
+    <div className="flex flex-wrap gap-2">
+      {visualStyles.map((style) => (
+        <motion.button
+          key={style}
+          onClick={() => setVisualStyle(style)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            visualStyle === style
+              ? 'bg-rose-500/20 border border-rose-400/50 text-rose-300 shadow-lg shadow-rose-500/20'
+              : 'bg-slate-700/50 border border-slate-600/50 text-slate-300 hover:border-rose-400/30 hover:text-rose-200 hover:bg-rose-500/10'
+          }`}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {style}
+        </motion.button>
+      ))}
+    </div>
+  </div>
+</div>
 
         {/* Begin Weaving Button */}
         <motion.div className="text-center">
