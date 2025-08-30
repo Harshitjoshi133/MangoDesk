@@ -195,14 +195,8 @@ export default function StoryPage({ params }: StoryPageProps) {
 
   const getModalityInfo = () => {
     switch (modality) {
-      case 'interactive':
-        return { title: 'Interactive Storytelling', icon: '🎮', color: 'violet' };
-      case 'visual':
-        return { title: 'Visual Storytelling', icon: '🎨', color: 'cyan' };
-      case 'audio':
-        return { title: 'Audio Narration', icon: '🎧', color: 'magenta' };
       default:
-        return { title: 'Story Experience', icon: '📖', color: 'violet' };
+        return { title: ' ', icon: ' ', color: 'violet' };
     }
   };
 
