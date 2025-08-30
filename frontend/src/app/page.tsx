@@ -1,23 +1,19 @@
 "use client";
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import StoryInputModule from '../components/input/StoryInputModule';
-import ModalitySelector from '../components/input/ModalitySelector';
 
 export default function Home() {
-  const [step, setStep] = useState<'prompt' | 'modality' | 'generating'>('prompt');
-  const [storyPrompt, setStoryPrompt] = useState('');
+  const router = useRouter();
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleStorySubmit = (prompt: string) => {
-    setStoryPrompt(prompt);
-    setStep('modality');
-  };
-
-  const handleModalitySelect = (modality: string) => {
-    setStep('generating');
-    // TODO: Navigate to story page with prompt and modality
-    console.log('Selected modality:', modality, 'for prompt:', storyPrompt);
+  const handleStorySubmit = async (prompt: string) => {
+    setIsGenerating(true);
+    // In a real app, you would call an API to generate the story
+    // For now, we'll just navigate to the story page with the prompt
+    router.push(`/story/new?prompt=${encodeURIComponent(prompt)}`);
   };
 
   return (
@@ -177,61 +173,19 @@ export default function Home() {
             />
           </motion.div>
         </motion.div>
-
-        {/* Step-based Content */}
-        <AnimatePresence mode="wait">
-          {step === 'prompt' && (
-            <motion.div
-              key="prompt"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              transition={{ duration: 0.6 }}
-            >
-              <StoryInputModule onStorySubmit={handleStorySubmit} />
-            </motion.div>
-          )}
-
-          {step === 'modality' && (
-            <motion.div
-              key="modality"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              transition={{ duration: 0.6 }}
-            >
-              <ModalitySelector 
-                storyPrompt={storyPrompt}
-                onModalitySelect={handleModalitySelect}
-              />
-            </motion.div>
-          )}
-
-          {step === 'generating' && (
-            <motion.div
-              key="generating"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.6 }}
-              className="text-center"
-            >
-              <div className="backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl p-12 shadow-2xl">
-                <motion.div
-                  className="w-24 h-24 border-4 border-violet-500/30 border-t-violet-500 rounded-full mx-auto mb-8"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <h2 className="text-3xl font-bold text-violet-300 mb-4">
-                  Weaving Your Story
-                </h2>
-                <p className="text-slate-300 text-lg">
-                  AI is crafting your unique narrative experience...
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Story Input Module */}
+        <StoryInputModule onStorySubmit={handleStorySubmit} />
+        
+        {/* Loading Overlay */}
+        {isGenerating && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="text-center p-8 bg-slate-800/90 rounded-2xl border border-slate-700/50">
+              <div className="text-2xl text-violet-300 mb-6">Weaving your story...</div>
+              <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="mt-6 text-slate-400">This may take a moment as we craft your unique adventure</p>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
