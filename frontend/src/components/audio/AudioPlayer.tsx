@@ -23,6 +23,8 @@ export default function AudioPlayer({
   duration = 0
 }: AudioPlayerProps) {
   const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [lastVolume, setLastVolume] = useState(0.8);
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -33,6 +35,27 @@ export default function AudioPlayer({
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(e.target.value);
     onSeek?.(newTime);
+  };
+
+  const toggleMute = () => {
+    if (isMuted) {
+      setVolume(lastVolume);
+    } else {
+      setLastVolume(volume);
+      setVolume(0);
+    }
+    setIsMuted(!isMuted);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    setLastVolume(newVolume);
+    if (newVolume === 0) {
+      setIsMuted(true);
+    } else if (isMuted) {
+      setIsMuted(false);
+    }
   };
 
   return (
@@ -46,25 +69,32 @@ export default function AudioPlayer({
         {/* Play/Pause Button */}
         <motion.button
           onClick={isPlaying ? onPause : onPlay}
-          className="w-12 h-12 rounded-full bg-gradient-to-r from-violet-600 to-cyan-600 flex items-center justify-center text-white shadow-lg hover:shadow-violet-500/30 transition-all duration-200"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-violet-600 to-cyan-600 flex items-center justify-center text-white shadow-lg hover:shadow-violet-500/40 transition-all duration-200 relative overflow-hidden group"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-cyan-600 opacity-100 group-hover:opacity-0 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-700 to-cyan-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
           {isPlaying ? (
             <motion.div
-              className="w-4 h-4 flex items-center justify-center"
+              className="w-5 h-5 flex items-center justify-center relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              key="pause"
             >
-              <div className="w-1 h-4 bg-white mx-0.5" />
-              <div className="w-1 h-4 bg-white mx-0.5" />
+              <div className="w-1 h-5 bg-white mx-0.5 rounded-full" />
+              <div className="w-1 h-5 bg-white mx-0.5 rounded-full" />
             </motion.div>
           ) : (
             <motion.div
-              className="w-0 h-0 border-l-4 border-l-white border-t-2 border-t-transparent border-b-2 border-b-transparent ml-1"
+              className="w-5 h-5 flex items-center justify-center relative ml-0.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-            />
+              key="play"
+            >
+              <div className="w-0 h-0 border-t-3 border-t-transparent border-b-3 border-b-transparent border-l-5 border-l-white ml-1" />
+            </motion.div>
           )}
         </motion.button>
 
@@ -89,18 +119,48 @@ export default function AudioPlayer({
           </div>
         </div>
 
-        {/* Volume Control */}
-        <div className="flex items-center space-x-2">
-          <span className="text-xs text-slate-400">🔊</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-16 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-          />
+        {/* Volume Controls */}
+        <div className="flex items-center space-x-3">
+          {/* Mute/Unmute Button */}
+          <motion.button
+            onClick={toggleMute}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted || volume === 0 ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+              </svg>
+            ) : volume > 0.5 ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 5l7.071 7.071M12 19l-7.071-7.07" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+              </svg>
+            )}
+          </motion.button>
+          
+          {/* Volume Slider */}
+          <div className="w-20 flex items-center">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={isMuted ? 0 : volume}
+              onChange={handleVolumeChange}
+              className="w-full h-1.5 bg-slate-600 rounded-full appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${(volume / 1) * 100}%, #4b5563 ${(volume / 1) * 100}%, #4b5563 100%)`
+              }}
+            />
+          </div>
         </div>
       </div>
 
