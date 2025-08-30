@@ -209,7 +209,7 @@ export default function StoryPage({ params }: StoryPageProps) {
   const modalityInfo = getModalityInfo();
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-black relative overflow-hidden">
+    <main className="h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-black relative overflow-hidden">
       {/* Animated background particles */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-400 rounded-full animate-pulse opacity-60" />
@@ -217,10 +217,10 @@ export default function StoryPage({ params }: StoryPageProps) {
         <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-magenta-400 rounded-full animate-pulse opacity-30" />
       </div>
 
-      <div className="relative z-10 h-screen flex flex-col">
+      <div className="relative z-10 h-full flex flex-col">
         {/* Header */}
         <motion.div
-          className="flex items-center justify-between p-6 backdrop-blur-xl bg-slate-900/30 border-b border-slate-700/50"
+          className="flex-shrink-0 flex items-center justify-between p-6 backdrop-blur-xl bg-slate-900/30 border-b border-slate-700/50"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -243,67 +243,71 @@ export default function StoryPage({ params }: StoryPageProps) {
         </motion.div>
 
         {/* Main Content Area */}
-        <div className="flex-1 relative p-6 overflow-hidden">
-          <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Visual Display - Takes up 2/3 of the screen on large displays */}
-            <div className="lg:col-span-2 h-full">
-              <VisualDisplay 
-                imageUrl={currentSegment?.imageUrl}
-                isLoading={isLoading}
-                onImageError={() => {
-                  // Handle image loading error
-                  console.error('Failed to load story image');
-                }}
-              />
-            </div>
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full p-6 overflow-y-auto">
+            <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Visual Display - Takes up 2/3 of the screen on large displays */}
+              <div className="lg:col-span-2 h-full">
+                <VisualDisplay 
+                  imageUrl={currentSegment?.imageUrl}
+                  isLoading={isLoading}
+                  onImageError={() => {
+                    // Handle image loading error
+                    console.error('Failed to load story image');
+                  }}
+                />
+              </div>
 
-            {/* Right Panel - Controls and Info */}
-            <div className="space-y-6 overflow-y-auto max-h-full pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
-              {/* Story Info */}
-              <motion.div
-                className="backdrop-blur-xl bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 shadow-2xl"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <h3 className="text-violet-300 font-semibold mb-2">Your Story:</h3>
-                <p className="text-slate-300 text-sm italic break-words whitespace-normal overflow-wrap-anywhere">"{storyPrompt}"</p>
-              </motion.div>
+              {/* Right Panel - Controls and Info */}
+              <div className="space-y-6 pr-2">
+                {/* Story Info */}
+                <motion.div
+                  className="backdrop-blur-xl bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 shadow-2xl"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  <h3 className="text-violet-300 font-semibold mb-2">Your Story:</h3>
+                  <p className="text-slate-300 text-sm italic break-words whitespace-normal overflow-wrap-anywhere">"{storyPrompt}"</p>
+                </motion.div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded overflow-y-auto max-h-32 scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900">
-                  {error}
+                {/* Error Message */}
+                {error && (
+                  <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded overflow-y-auto max-h-32 scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900">
+                    {error}
+                  </div>
+                )}
+
+                {/* Audio Player */}
+                <AudioPlayer
+                  audioUrl={currentSegment?.audioUrl}
+                  isPlaying={isAudioPlaying}
+                  currentTime={audioElement?.currentTime || 0}
+                  duration={audioElement?.duration || 0}
+                  onPlay={handleAudioPlay}
+                  onPause={handleAudioPause}
+                  onSeek={(time) => {
+                    if (audioElement) {
+                      audioElement.currentTime = time;
+                    }
+                  }}
+                />
+
+                {/* Narrative Text */}
+                <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
+                  <NarrativeText
+                    text={currentSegment?.text || "Loading your story..."}
+                    isTyping={isLoading}
+                  />
                 </div>
-              )}
 
-              {/* Audio Player */}
-              <AudioPlayer
-                audioUrl={currentSegment?.audioUrl}
-                isPlaying={isAudioPlaying}
-                currentTime={audioElement?.currentTime || 0}
-                duration={audioElement?.duration || 0}
-                onPlay={handleAudioPlay}
-                onPause={handleAudioPause}
-                onSeek={(time) => {
-                  if (audioElement) {
-                    audioElement.currentTime = time;
-                  }
-                }}
-              />
-
-              {/* Narrative Text */}
-              <NarrativeText
-                text={currentSegment?.text || "Loading your story..."}
-                isTyping={isLoading}
-              />
-
-              {/* Choice Panel */}
-              <ChoicePanel
-                choices={currentSegment?.choices || []}
-                onChoiceSelect={handleChoiceSelect}
-                isLoading={isLoading}
-              />
+                {/* Choice Panel */}
+                <ChoicePanel
+                  choices={currentSegment?.choices || []}
+                  onChoiceSelect={handleChoiceSelect}
+                  isLoading={isLoading}
+                />
+              </div>
             </div>
           </div>
         </div>
