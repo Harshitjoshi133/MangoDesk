@@ -235,8 +235,6 @@ export default function StoryPage({ params }: StoryPageProps) {
               ← Back to Genesis
             </motion.button>
             <div className="w-px h-6 bg-slate-600" />
-            <span className="text-slate-400">Story ID: {params.storyId}</span>
-            <div className="w-px h-6 bg-slate-600" />
             <span className={`text-${modalityInfo.color}-300 flex items-center space-x-2`}>
               <span>{modalityInfo.icon}</span>
               <span>{modalityInfo.title}</span>
