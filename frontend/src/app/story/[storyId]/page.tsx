@@ -24,6 +24,10 @@ export default function StoryPage({ params }: StoryPageProps) {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isAudioGenerated, setIsAudioGenerated] = useState(false);
+  const [isGeneratingVisual, setIsGeneratingVisual] = useState(false);
+  const [isVisualGenerated, setIsVisualGenerated] = useState(false);
   
   const storyPrompt = searchParams.get('prompt') || 'Your story begins here...';
   const modality = searchParams.get('modality') || 'interactive';
@@ -104,6 +108,103 @@ export default function StoryPage({ params }: StoryPageProps) {
     }
   };
 
+  const handleGenerateAudio = async () => {
+    if (!currentSegment) return;
+
+    setIsGeneratingAudio(true);
+    try {
+      const audioUrl = await storyApi.generateAudio(currentSegment.text);
+      setCurrentSegment(prev => prev ? { ...prev, audioUrl } : null);
+      setIsAudioGenerated(true);
+    } catch (err) {
+      console.error('Error generating audio:', err);
+      setError('Failed to generate audio');
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  const handleGenerateVisual = async () => {
+    if (!currentSegment) return;
+
+    setIsGeneratingVisual(true);
+    try {
+      const imageUrl = await storyApi.generateImage(currentSegment.text, visualStyle);
+      setCurrentSegment(prev => prev ? { ...prev, imageUrl } : null);
+      setIsVisualGenerated(true);
+    } catch (err) {
+      console.error('Error generating visual:', err);
+      setError('Failed to generate visual');
+    } finally {
+      setIsGeneratingVisual(false);
+    }
+  };
+
+  const handleChoiceSelect = async (choiceId: string) => {
+    console.log('=== Starting handleChoiceSelect ===');
+    console.log('Current segment:', currentSegment);
+    console.log('Selected choice ID:', choiceId);
+    
+    if (!currentSegment?.session_id) {
+      const error = 'No session ID available in current segment';
+      console.error(error);
+      setError(error);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('Calling generateNextSegment with:', {
+        choiceId,
+        sessionId: currentSegment.session_id
+      });
+      
+      const nextSegment = await storyApi.generateNextSegment(
+        choiceId, 
+        currentSegment.session_id
+      );
+      
+      console.log('Received next segment:', nextSegment);
+      
+      if (!nextSegment) {
+        throw new Error('No segment returned from API');
+      }
+      
+      const updatedSegment = {
+        ...nextSegment,
+        id: nextSegment.id || currentSegment.session_id,
+        session_id: nextSegment.session_id || currentSegment.session_id,
+        text: nextSegment.text || nextSegment.current_scene || 'The story continues...',
+        imageUrl: nextSegment.imageUrl || '',
+        audioUrl: nextSegment.audioUrl || '',
+        choices: nextSegment.choices || []
+      };
+      
+      console.log('Updating segment with:', updatedSegment);
+      setCurrentSegment(updatedSegment);
+      
+      setIsAudioGenerated(false);
+      setIsVisualGenerated(false);
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process your choice';
+      console.error('Error in handleChoiceSelect:', {
+        error: err,
+        message: errorMessage,
+        choiceId,
+        sessionId: currentSegment?.session_id
+      });
+      setError(`Error: ${errorMessage}. Please try again.`);
+    } finally {
+      setIsLoading(false);
+      console.log('=== Finished handleChoiceSelect ===');
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     
@@ -143,8 +244,8 @@ export default function StoryPage({ params }: StoryPageProps) {
             imageUrl: '',
             audioUrl: '',
             choices: [
-              { id: 'retry', text: 'Retry' },
-              { id: 'home', text: 'Go to Home' }
+              { choice_id: 'retry', choice_text: 'Retry', consequence: 'Retry loading the story' },
+              { choice_id: 'home', choice_text: 'Go to Home', consequence: 'Return to home page' }
             ]
           });
         }
@@ -166,32 +267,6 @@ export default function StoryPage({ params }: StoryPageProps) {
       }
     };
   }, [storyPrompt, tone, visualStyle, modality]);
-
-  const handleChoiceSelect = async (choiceId: string) => {
-    if (!currentSegment?.id) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Pause any currently playing audio
-      if (audioElement) {
-        audioElement.pause();
-        setIsAudioPlaying(false);
-      }
-      
-      const segment = await storyApi.generateNextSegment(choiceId, currentSegment.id);
-      setCurrentSegment(segment);
-      
-      // Scroll to top of the content when new segment loads
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      console.error('Error processing choice:', err);
-      setError('Failed to process your choice. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getModalityInfo = () => {
     switch (modality) {
@@ -242,13 +317,9 @@ export default function StoryPage({ params }: StoryPageProps) {
             <div className="min-h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Visual Display - Takes up 2/3 of the screen on large displays */}
               <div className="lg:col-span-2">
-                <VisualDisplay 
-                  imageUrl={currentSegment?.imageUrl}
-                  isLoading={isLoading}
-                  onImageError={() => {
-                    console.error('Failed to load story image');
-                  }}
-                />
+                {isVisualGenerated && currentSegment?.imageUrl && (
+                  <VisualDisplay imageUrl={currentSegment.imageUrl} />
+                )}
               </div>
 
               {/* Right Panel - Controls and Info */}
@@ -266,33 +337,61 @@ export default function StoryPage({ params }: StoryPageProps) {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="text-red-400 text-sm p-2 bg-red-900/30 rounded">
+                  <div className="text-red-500 text-sm">
                     {error}
                   </div>
                 )}
 
-                {/* Audio Player */}
-                <AudioPlayer
-                  audioUrl={currentSegment?.audioUrl}
-                  isPlaying={isAudioPlaying}
-                  currentTime={audioElement?.currentTime || 0}
-                  duration={audioElement?.duration || 0}
-                  onPlay={handleAudioPlay}
-                  onPause={handleAudioPause}
-                  onSeek={(time) => {
-                    if (audioElement) {
-                      audioElement.currentTime = time;
-                    }
-                  }}
-                />
-
                 {/* Narrative Text */}
-                <div className="min-h-[200px]">
-                  <NarrativeText
-                    text={currentSegment?.text || "Loading your story..."}
-                    isTyping={isLoading}
-                  />
+                <div className="min-h-[200px] bg-white/10 p-6 rounded-lg">
+                  <NarrativeText text={currentSegment?.text || ''} />
                 </div>
+
+                {/* Generation Controls */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleGenerateAudio}
+                    disabled={isGeneratingAudio || isAudioGenerated}
+                    className={`px-4 py-2 rounded-lg ${
+                      isAudioGenerated 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    } disabled:opacity-50`}
+                  >
+                    {isGeneratingAudio ? 'Generating...' : isAudioGenerated ? 'Audio Ready' : 'Generate Audio'}
+                  </button>
+                  
+                  <button
+                    onClick={handleGenerateVisual}
+                    disabled={isGeneratingVisual || isVisualGenerated}
+                    className={`px-4 py-2 rounded-lg ${
+                      isVisualGenerated 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    } disabled:opacity-50`}
+                  >
+                    {isGeneratingVisual ? 'Generating...' : isVisualGenerated ? 'Visual Ready' : 'Generate Visual'}
+                  </button>
+                </div>
+
+                {/* Audio Player - Only show if audio is generated */}
+                {isAudioGenerated && currentSegment?.audioUrl && (
+                  <div className="mt-6">
+                    <AudioPlayer
+                      audioUrl={currentSegment.audioUrl}
+                      isPlaying={isAudioPlaying}
+                      currentTime={audioElement?.currentTime || 0}
+                      duration={audioElement?.duration || 0}
+                      onPlay={handleAudioPlay}
+                      onPause={handleAudioPause}
+                      onSeek={(time: number) => {
+                        if (audioElement) {
+                          audioElement.currentTime = time;
+                        }
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Choice Panel */}
                 <div className="pb-6">

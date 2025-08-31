@@ -8,12 +8,20 @@ export interface Story {
 export type StorySegment = {
   id: string;
   text: string;
-  imageUrl: string;
+  imageUrl?: string;
   audioUrl?: string;
   choices: {
-    id: string;
-    text: string;
+    choice_id: string;
+    choice_text: string;
+    consequence: string;
   }[];
+  session_id?: string;
+  current_scene?: string;
+  previous_choice?: {
+    choice_id: string;
+    choice_text: string;
+    consequence: string;
+  };
 };
 
 export type StoryType = 'folk_tale' | 'historical' | 'mythology' | 'cultural_tradition';

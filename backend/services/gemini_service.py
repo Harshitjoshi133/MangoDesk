@@ -94,27 +94,43 @@ class GeminiService:
 
     async def continue_interactive_story(self, story_history: List[str], chosen_path: str) -> str:
         """Continue the story based on user's choice"""
-        history_context = " -> ".join(story_history[-3:])  # Last 3 interactions
-        
-        prompt = f"""
-        Story History: {history_context}
-        User Chose: {chosen_path}
-        
-        Continue the story based on this choice. The continuation should:
-        1. Be 2-3 paragraphs long
-        2. Maintain cultural authenticity
-        3. Be engaging and immersive
-        4. Lead naturally to the next decision point
-        5. Preserve the original story's tone and style
-        
-        Return only the story continuation.
-        """
-        
         try:
+            # Get the last few story segments for context
+            context = "\n".join(story_history[-3:])  # Use last 3 segments for context
+            
+            prompt = f"""
+            Story so far:
+            {context}
+            
+            The reader chose: "{chosen_path}"
+            
+            Continue the story in 2-3 engaging paragraphs that:
+            1. Acknowledge the choice
+            2. Develop the story naturally
+            3. End with a new situation or decision point
+            4. Maintain cultural authenticity
+            
+            Write in a narrative style that matches the story's tone.
+            """
+            
             response = self.model.generate_content(prompt)
-            return response.text
+            
+            if not hasattr(response, 'text') or not response.text.strip():
+                raise ValueError("Empty response from model")
+                
+            # Clean up the response
+            continuation = response.text.strip()
+            
+            # Remove any markdown code blocks if present
+            if continuation.startswith('```'):
+                continuation = continuation[continuation.find('\n')+1:continuation.rfind('```')].strip()
+                
+            return continuation
+            
         except Exception as e:
-            return f"The story continues as {chosen_path}..."
+            print(f"Error continuing story: {str(e)}")
+            # Return a fallback continuation
+            return f"The story continues as you chose: {chosen_path}. The narrative unfolds in unexpected ways, leading to new adventures and challenges."
 
     async def translate_story(self, content: str, target_language: Language) -> str:
         """Translate story content while preserving cultural context"""

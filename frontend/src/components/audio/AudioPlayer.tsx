@@ -9,16 +9,25 @@ const FALLBACK_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-S
 interface AudioPlayerProps {
   audioUrl?: string;
   title?: string;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  onPlay: () => void;
+  onPause: () => void;
+  onSeek: (time: number) => void;
 }
 
 export default function AudioPlayer({
   audioUrl = FALLBACK_AUDIO_URL,
-  title = 'Now Playing'
+  title = 'Now Playing',
+  isPlaying,
+  currentTime,
+  duration,
+  onPlay,
+  onPause,
+  onSeek,
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isHovered, setIsHovered] = useState(false);
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
@@ -36,7 +45,6 @@ export default function AudioPlayer({
   // Update time as audio plays
   const updateTime = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
       animationRef.current = requestAnimationFrame(updateTime);
     }
   };
@@ -49,8 +57,7 @@ export default function AudioPlayer({
     const pos = (e.clientX - rect.left) / rect.width;
     const newTime = Math.min(Math.max(0, pos * duration), duration);
     
-    audioRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
+    onSeek(newTime);
   };
 
   // Handle play/pause with better state management
@@ -58,16 +65,10 @@ export default function AudioPlayer({
     if (!audioRef.current) return;
     
     if (isPlaying) {
-      audioRef.current.pause();
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      onPause();
     } else {
-      audioRef.current.play().then(() => {
-        animationRef.current = requestAnimationFrame(updateTime);
-      });
+      onPlay();
     }
-    setIsPlaying(!isPlaying);
   };
 
   // Handle volume change
@@ -85,19 +86,19 @@ export default function AudioPlayer({
     if (!audio) return;
 
     const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
+      // setDuration(audio.duration);
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
+      // setCurrentTime(audio.currentTime);
     };
 
     const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      // setIsPlaying(false);
+      // setCurrentTime(0);
+      // if (animationRef.current) {
+      //   cancelAnimationFrame(animationRef.current);
+      // }
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);

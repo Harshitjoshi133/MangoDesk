@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion';
 
 interface Choice {
-  id: string;
-  text: string;
+  choice_id: string;
+  choice_text: string;
+  consequence?: string;
 }
 
 interface ChoicePanelProps {
@@ -36,17 +37,18 @@ export default function ChoicePanel({ choices, onChoiceSelect, isLoading = false
         <div className="space-y-3 overflow-y-auto max-h-64 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800 pr-2">
           {choices.map((choice, index) => (
             <motion.button
-              key={choice.id}
-              onClick={() => onChoiceSelect(choice.id)}
+              key={choice.choice_id}
+              onClick={() => onChoiceSelect(choice.choice_id)}
               className="w-full text-left p-4 rounded-lg bg-slate-800/50 border border-slate-600/50 text-white hover:border-violet-500/50 hover:bg-slate-700/50 transition-all duration-200"
               whileHover={{ scale: 1.02, x: 5 }}
               whileTap={{ scale: 0.98 }}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
+              title={choice.consequence}
             >
               <span className="text-violet-400 font-medium mr-2">→</span>
-              {choice.text}
+              {choice.choice_text}
             </motion.button>
           ))}
         </div>

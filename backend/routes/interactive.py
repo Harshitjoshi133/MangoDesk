@@ -9,7 +9,6 @@ gemini_service = GeminiService()
 
 # In-memory storage for interactive sessions
 sessions_db: Dict[str, dict] = {}
-
 @router.post("/start/{story_id}")
 async def start_interactive_session(story_id: str):
     """Start a new interactive storytelling session"""
@@ -23,12 +22,22 @@ async def start_interactive_session(story_id: str):
         session_id = str(uuid.uuid4())
         story = stories_db[story_id]
         
+        # Ensure choices have the required fields
+        choices = [
+            {
+                "choice_id": f"choice_{i+1}",
+                "choice_text": choice.get("choice_text", f"Choice {i+1}"),
+                "consequence": choice.get("consequence", f"You chose option {i+1}")
+            }
+            for i, choice in enumerate(story.get("choices", []))
+        ]
+        
         session = InteractiveSession(
             session_id=session_id,
             story_id=story_id,
             current_scene=story["enhanced_content"][:500],
             story_history=[story["enhanced_content"][:500]],
-            current_choices=story["choices"]
+            current_choices=choices
         )
         
         sessions_db[session_id] = session.model_dump()
@@ -36,12 +45,11 @@ async def start_interactive_session(story_id: str):
         return {
             "session_id": session_id,
             "current_scene": session.current_scene,
-            "choices": session.current_choices
+            "choices": choices  # Ensure this matches the expected format
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error starting session: {str(e)}")
-
 @router.post("/choose")
 async def make_choice(choice_selection: ChoiceSelection):
     """Make a choice in an interactive story"""
@@ -90,6 +98,7 @@ async def make_choice(choice_selection: ChoiceSelection):
         }
         
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Error making choice: {str(e)}")
 
 @router.get("/session/{session_id}")
