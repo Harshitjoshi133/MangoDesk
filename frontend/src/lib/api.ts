@@ -58,6 +58,7 @@ export const storyApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept-Language': storyInput.language
         },
         body: JSON.stringify({
           title: storyInput.prompt,
@@ -65,7 +66,7 @@ export const storyApi = {
           story_type: storyInput.story_type,
           tone: storyInput.tone,
           visual_style: storyInput.visualStyle,
-          language: 'hi',
+          language: storyInput.language,
           culture: 'general',
           target_age_group: 'all',
           tags: []
@@ -81,8 +82,11 @@ export const storyApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept-Language': storyInput.language
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          language: storyInput.language
+        }),
       });
          
       if (!sessionResponse.session_id) {

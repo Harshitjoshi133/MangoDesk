@@ -4,16 +4,30 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import StoryInputModule from '../components/input/StoryInputModule';
+import { StoryInput } from '../types/story';
 
 export default function Home() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleStorySubmit = async (prompt: string) => {
+  const handleStorySubmit = async (storyInput: Omit<StoryInput, 'story_type'>) => {
     setIsGenerating(true);
-    // In a real app, you would call an API to generate the story
-    // For now, we'll just navigate to the story page with the prompt
-    router.push(`/story/new?prompt=${encodeURIComponent(prompt)}`);
+    try {
+      // Create a URLSearchParams object to build the query string
+      const params = new URLSearchParams({
+        prompt: storyInput.prompt,
+        tone: storyInput.tone,
+        visualStyle: storyInput.visualStyle,
+        language: storyInput.language,
+        // story_type will be set on the story creation page
+      });
+      
+      // Navigate to the story creation page with all parameters
+      router.push(`/story/new?${params.toString()}`);
+    } catch (error) {
+      console.error('Error creating story:', error);
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -174,15 +188,18 @@ export default function Home() {
           </motion.div>
         </motion.div>
         {/* Story Input Module */}
-        <StoryInputModule onStorySubmit={handleStorySubmit} />
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          <div className="max-w-4xl mx-auto">
+            <StoryInputModule onStorySubmit={handleStorySubmit} />
+          </div>
+        </div>
         
         {/* Loading Overlay */}
         {isGenerating && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="text-center p-8 bg-slate-800/90 rounded-2xl border border-slate-700/50">
-              <div className="text-2xl text-violet-300 mb-6">Weaving your story...</div>
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <div className="text-center">
               <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="mt-6 text-slate-400">This may take a moment as we craft your unique adventure</p>
+              <p className="mt-4 text-xl text-violet-300">Weaving your story...</p>
             </div>
           </div>
         )}

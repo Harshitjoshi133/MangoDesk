@@ -47,6 +47,7 @@ class InteractiveSession(BaseModel):
     current_scene: str
     story_history: List[str] = Field(default_factory=list)
     current_choices: List[InteractiveChoice] = Field(default_factory=list)
+    language: Language = Language.ENGLISH
 
 class ChoiceSelection(BaseModel):
     session_id: str

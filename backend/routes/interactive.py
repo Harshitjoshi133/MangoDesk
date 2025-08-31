@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Dict
 import uuid
 from models.schemas import InteractiveSession, ChoiceSelection, InteractiveChoice
@@ -9,10 +9,15 @@ gemini_service = GeminiService()
 
 # In-memory storage for interactive sessions
 sessions_db: Dict[str, dict] = {}
+
 @router.post("/start/{story_id}")
-async def start_interactive_session(story_id: str):
+async def start_interactive_session(story_id: str, request: Request):
     """Start a new interactive storytelling session"""
     try:
+        # Get language from request body or headers
+        request_data = await request.json() if request.method == "POST" and request.headers.get("content-type") == "application/json" else {}
+        language = request_data.get('language') or request.headers.get('accept-language', 'en').split(',')[0].split('-')[0]
+        
         # Import here to avoid circular imports
         from routes.stories import stories_db
         
@@ -21,6 +26,9 @@ async def start_interactive_session(story_id: str):
         
         session_id = str(uuid.uuid4())
         story = stories_db[story_id]
+        
+        # Set language for the story
+        story["language"] = language
         
         # Ensure choices have the required fields
         choices = [
@@ -37,7 +45,8 @@ async def start_interactive_session(story_id: str):
             story_id=story_id,
             current_scene=story["enhanced_content"][:500],
             story_history=[story["enhanced_content"][:500]],
-            current_choices=choices
+            current_choices=choices,
+            language=language
         )
         
         sessions_db[session_id] = session.model_dump()
@@ -45,61 +54,76 @@ async def start_interactive_session(story_id: str):
         return {
             "session_id": session_id,
             "current_scene": session.current_scene,
-            "choices": choices  # Ensure this matches the expected format
+            "choices": choices,
+            "language": language
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error starting session: {str(e)}")
+
 @router.post("/choose")
-async def make_choice(choice_selection: ChoiceSelection):
+async def make_choice(choice_selection: ChoiceSelection, request: Request):
     """Make a choice in an interactive story"""
     try:
         session_id = choice_selection.session_id
+        choice_id = choice_selection.choice_id
         
         if session_id not in sessions_db:
             raise HTTPException(status_code=404, detail="Session not found")
+            
+        session_data = sessions_db[session_id]
+        session = InteractiveSession(**session_data)
         
-        session = sessions_db[session_id]
-        
-        # Find the selected choice
-        selected_choice = None
-        for choice in session["current_choices"]:
-            if choice["choice_id"] == choice_selection.choice_id:
-                selected_choice = choice
-                break
+        # Get the selected choice
+        selected_choice = next(
+            (choice for choice in session.current_choices if choice["choice_id"] == choice_id),
+            None
+        )
         
         if not selected_choice:
-            raise HTTPException(status_code=400, detail="Invalid choice ID")
+            raise HTTPException(status_code=400, detail="Invalid choice")
         
-        # Generate story continuation based on choice
-        story_continuation = await gemini_service.continue_interactive_story(
-            session["story_history"],
-            selected_choice["consequence"]
-        )
+        # Get the story
+        from routes.stories import stories_db
+        story = stories_db.get(session.story_id)
+        if not story:
+            raise HTTPException(status_code=404, detail="Story not found")
         
-        # Generate new choices for the next scene
-        new_choices = await gemini_service.generate_interactive_choices(
-            story_continuation
-        )
+        # Generate the next segment based on the choice
+        # This is where you would typically call your LLM to generate the next part of the story
+        # For now, we'll just create a simple response
+        next_scene = f"You chose: {selected_choice['choice_text']}. The story continues..."
         
         # Update session
-        session["story_history"].append(f"Choice: {selected_choice['choice_text']}")
-        session["story_history"].append(story_continuation)
-        session["current_scene"] = story_continuation
-        session["current_choices"] = [choice.model_dump() for choice in new_choices]
+        session.story_history.append(next_scene)
+        session.current_scene = next_scene
+        session.previous_choice = selected_choice
         
-        sessions_db[session_id] = session
+        # Generate new choices (in a real app, these would come from your LLM)
+        new_choices = [
+            {
+                "choice_id": f"choice_{i+1}",
+                "choice_text": f"Option {i+1} for '{selected_choice['choice_text']}'",
+                "consequence": f"You chose option {i+1} after {selected_choice['choice_text']}"
+            }
+            for i in range(2)  # Just 2 options for simplicity
+        ]
+        
+        session.current_choices = new_choices
+        
+        # Save updated session
+        sessions_db[session_id] = session.model_dump()
         
         return {
             "session_id": session_id,
-            "previous_choice": selected_choice,
-            "current_scene": story_continuation,
-            "choices": new_choices
+            "current_scene": session.current_scene,
+            "choices": session.current_choices,
+            "previous_choice": session.previous_choice,
+            "language": getattr(session, 'language', 'en')  # Default to English if not set
         }
         
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Error making choice: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing choice: {str(e)}")
 
 @router.get("/session/{session_id}")
 async def get_session(session_id: str):
@@ -112,7 +136,8 @@ async def get_session(session_id: str):
         "session_id": session_id,
         "current_scene": session["current_scene"],
         "choices": session["current_choices"],
-        "history_length": len(session["story_history"])
+        "history_length": len(session["story_history"]),
+        "language": session.get("language", "en")  # Default to English if not set
     }
 
 @router.get("/session/{session_id}/history")

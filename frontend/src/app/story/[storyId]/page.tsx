@@ -33,6 +33,7 @@ export default function StoryPage({ params }: StoryPageProps) {
   const modality = searchParams.get('modality') || 'interactive';
   const tone = searchParams.get('tone') || 'mysterious';
   const visualStyle = searchParams.get('visualStyle') || 'fantasy';
+  const language = searchParams.get('language') || 'en';
 
   // Map modality to valid story types (case-insensitive)
   const getStoryType = (modality: string): StoryType => {
@@ -48,9 +49,9 @@ export default function StoryPage({ params }: StoryPageProps) {
     if (lowerModality.includes('folk')) return 'folk_tale';
     if (lowerModality.includes('hist')) return 'historical';
     if (lowerModality.includes('myth')) return 'mythology';
-    if (lowerModality.includes('cult')) return 'cultural_tradition';
+    if (lowerModality.includes('cultural') || lowerModality.includes('tradition')) return 'cultural_tradition';
     
-    // Default to folk_tale for any other case
+    // Default to folk_tale if no match found
     return 'folk_tale';
   };
 
@@ -206,9 +207,7 @@ export default function StoryPage({ params }: StoryPageProps) {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    
-    const initStory = async () => {
+    const initializeStory = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -221,52 +220,28 @@ export default function StoryPage({ params }: StoryPageProps) {
           tone,
           visualStyle,
           story_type: storyType,
+          language: language as any // Type assertion since we've validated the language
         };
         
-        console.log('Calling generateInitialSegment with:', storyInput);
-        const segment = await storyApi.generateInitialSegment(storyInput);
-        console.log('Received segment:', segment);
+        console.log('Initializing story with input:', storyInput);
         
-        if (isMounted) {
-          setCurrentSegment(segment);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      } catch (error) {
-        console.error('Error initializing story:', error);
-        if (isMounted) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to start the story';
-          setError(`Error: ${errorMessage}. Please try again.`);
-          
-          // Set a fallback segment with error information
-          setCurrentSegment({
-            id: 'error-' + Date.now(),
-            text: `Error: ${errorMessage}. Please try again or refresh the page.`,
-            imageUrl: '',
-            audioUrl: '',
-            choices: [
-              { choice_id: 'retry', choice_text: 'Retry', consequence: 'Retry loading the story' },
-              { choice_id: 'home', choice_text: 'Go to Home', consequence: 'Return to home page' }
-            ]
-          });
-        }
+        const segment = await storyApi.generateInitialSegment(storyInput);
+        setCurrentSegment(segment);
+        
+        // Reset generation flags
+        setIsAudioGenerated(false);
+        setIsVisualGenerated(false);
+        
+      } catch (err) {
+        console.error('Error initializing story:', err);
+        setError('Failed to initialize the story. Please try again.');
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
-
-    initStory();
     
-    return () => {
-      isMounted = false;
-      // Clean up any audio elements
-      if (audioElement) {
-        audioElement.pause();
-        URL.revokeObjectURL(audioElement.src);
-      }
-    };
-  }, [storyPrompt, tone, visualStyle, modality]);
+    initializeStory();
+  }, [params.storyId, storyPrompt, modality, tone, visualStyle, language]);
 
   const getModalityInfo = () => {
     switch (modality) {
