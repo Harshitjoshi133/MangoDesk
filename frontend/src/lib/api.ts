@@ -49,6 +49,56 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 }
 
 export const storyApi = {
+  // Upload a text file and create a story from it
+  async uploadTextFile(file: File, storyInput: Omit<StoryInput, 'prompt'>): Promise<StorySegment> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', file.name.split('.')[0]);
+      formData.append('story_type', storyInput.story_type);
+      formData.append('language', storyInput.language);
+      formData.append('culture', 'general');
+      formData.append('target_age_group', 'all');
+
+      // Make the upload request without using fetchAPI since it's a FormData request
+      const response = await fetch(`${API_BASE_URL}/stories/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Error uploading file');
+      }
+
+      const result = await response.json();
+
+      // Start an interactive session with the created story
+      const sessionResponse = await fetchAPI(`/interactive/start/${result.story_id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Language': storyInput.language
+        },
+        body: JSON.stringify({ language: storyInput.language })
+      });
+
+      // Return the story segment
+      return {
+        id: sessionResponse.session_id,
+        session_id: sessionResponse.session_id,
+        text: result.enhanced_content,
+        imageUrl: '',
+        audioUrl: '',
+        choices: sessionResponse.choices || [],
+        current_scene: result.enhanced_content
+      };
+    } catch (error) {
+      console.error('Error uploading text file:', error);
+      throw error;
+    }
+  },
+
   // Start a new interactive story session
   async generateInitialSegment(storyInput: StoryInput): Promise<StorySegment> {
     try { 

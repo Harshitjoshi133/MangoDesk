@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { StoryInput, SUPPORTED_LANGUAGES } from '../../types/story';
+import { storyApi } from '../../lib/api';
 
 interface StoryInputModuleProps {
   onStorySubmit: (data: Omit<StoryInput, 'story_type'>) => void;
@@ -13,18 +14,110 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
   const [tone, setTone] = useState('Epic');
   const [visualStyle, setVisualStyle] = useState('Anime');
   const [language, setLanguage] = useState<StoryInput['language']>('en');
+  const [file, setFile] = useState<File | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const tones = ['Epic', 'Mysterious', 'Whimsical', 'Dark', 'Romantic', 'Adventure'];
   const visualStyles = ['Anime', 'Photorealistic', 'Oil Painting', 'Digital Art', 'Watercolor', 'Cinematic'];
 
-  const handleBeginWeaving = () => {
-    if (storyPrompt.trim()) {
-      onStorySubmit({
-        prompt: storyPrompt,
-        tone,
-        visualStyle,
-        language
-      });
+  const handleBeginWeaving = async () => {
+    try {
+      if (file) {
+        // Read the file content
+        const text = await file.text();
+        // Truncate to 200 characters as per backend validation
+        const truncatedText = text.slice(0, 200);
+        
+        // Create the story input
+        const storyInput = {
+          title: file.name.split('.')[0],
+          content: truncatedText,
+          story_type: 'folk_tale' as const,
+          language,
+          culture: 'general',
+          target_age_group: 'all'
+        };
+        
+        // Send to stories/create endpoint
+        const response = await fetch('http://localhost:8000/api/v1/stories/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(storyInput),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create story');
+        }
+
+        const result = await response.json();
+        
+        // Send the result to the parent component
+        onStorySubmit({
+          prompt: result.enhanced_content,
+          tone,
+          visualStyle,
+          language
+        });
+      } else if (audioBlob) {
+        // If audio is recorded, send audio and start story for village in India
+        onStorySubmit({
+          prompt: 'Start a story for a village in India.',
+          tone,
+          visualStyle,
+          language
+        });
+      } else if (storyPrompt.trim()) {
+        onStorySubmit({
+          prompt: storyPrompt,
+          tone,
+          visualStyle,
+          language
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleBeginWeaving:', error);
+    }
+  };
+
+  // File upload handler
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+      setStoryPrompt(''); // Clear prompt if file is uploaded
+    }
+  };
+
+  // Audio recording handlers
+  const handleStartRecording = async () => {
+    setIsRecording(true);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    if (navigator.mediaDevices) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      setMediaRecorder(recorder);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (e) => {
+        chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        setIsRecording(false);
+      };
+      recorder.start();
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
     }
   };
 
@@ -55,14 +148,10 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
           <label className="block text-violet-300 font-semibold mb-4 text-lg">
             Your Story Prompt
           </label>
-          <motion.div
-            className="relative"
-            whileFocus={{ scale: 1.02 }}
-            transition={{ duration: 0.2 }}
-          >
+          <motion.div className="relative" whileFocus={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <textarea
               value={storyPrompt}
-              onChange={(e) => setStoryPrompt(e.target.value)}
+              onChange={(e) => { setStoryPrompt(e.target.value); setFile(null); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -71,11 +160,10 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
               }}
               placeholder="Describe your story idea, character, or the world you want to explore..."
               className="w-full h-32 bg-slate-900/50 border border-slate-600/50 rounded-xl p-6 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300 resize-none backdrop-blur-sm"
-              style={{
-                boxShadow: storyPrompt ? '0 0 20px rgba(139, 92, 246, 0.3)' : 'none'
-              }}
+              style={{ boxShadow: storyPrompt ? '0 0 20px rgba(139, 92, 246, 0.3)' : 'none' }}
+              disabled={!!file}
             />
-            {storyPrompt && (
+            {storyPrompt && !file && (
               <motion.div
                 className="absolute inset-0 border border-violet-500/30 rounded-xl pointer-events-none"
                 initial={{ opacity: 0 }}
@@ -84,6 +172,65 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
               />
             )}
           </motion.div>
+          {/* Upload File Button */}
+          <div className="mt-4 flex gap-4 items-center">
+            <label className="bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700">
+              Upload File
+              <input type="file" accept=".txt" className="hidden" onChange={handleFileChange} />
+            </label>
+            {file && <span className="text-green-400">{file.name} selected</span>}
+          </div>
+          {/* Record Audio Button */}
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex gap-4 items-center">
+              {!isRecording ? (
+                <button
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  onClick={handleStartRecording}
+                  type="button"
+                >
+                  Record Audio
+                </button>
+              ) : (
+                <button
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors animate-pulse"
+                  onClick={handleStopRecording}
+                  type="button"
+                >
+                  Stop Recording
+                </button>
+              )}
+              {isRecording && (
+                <span className="text-red-400 animate-pulse">Recording in progress...</span>
+              )}
+            </div>
+            
+            {audioUrl && (
+              <div className="w-full max-w-md bg-slate-700/50 rounded-lg p-4">
+                <audio 
+                  src={audioUrl} 
+                  controls 
+                  className="w-full focus:outline-none"
+                  controlsList="nodownload"
+                  onPlay={() => {
+                    // You can add any additional logic when audio starts playing
+                  }}
+                  onEnded={() => {
+                    // You can add any additional logic when audio finishes playing
+                  }}
+                >
+                  <track kind="captions" />
+                  Your browser does not support the audio element.
+                </audio>
+                <div className="flex justify-between text-sm text-slate-400 mt-2">
+                  <span>Recorded Audio</span>
+                  {audioBlob && (
+                    <span>{Math.round(audioBlob.size / 1024)} KB</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Parameter Controls */}
@@ -159,14 +306,14 @@ export default function StoryInputModule({ onStorySubmit }: StoryInputModuleProp
         <motion.div className="text-center">
           <motion.button
             onClick={handleBeginWeaving}
-            disabled={!storyPrompt.trim()}
+            disabled={!storyPrompt.trim() && !file && !audioBlob}
             className={`relative px-12 py-4 rounded-xl font-bold text-lg transition-all duration-300 ${
-              storyPrompt.trim()
+              storyPrompt.trim() || file || audioBlob
                 ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50'
                 : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
             }`}
-            whileHover={storyPrompt.trim() ? { scale: 1.05, y: -2 } : {}}
-            whileTap={storyPrompt.trim() ? { scale: 0.95 } : {}}
+            whileHover={(storyPrompt.trim() || file || audioBlob) ? { scale: 1.05, y: -2 } : {}}
+            whileTap={(storyPrompt.trim() || file || audioBlob) ? { scale: 0.95 } : {}}
           >
             <span className="relative z-10">Begin Weaving</span>
             {storyPrompt.trim() && (

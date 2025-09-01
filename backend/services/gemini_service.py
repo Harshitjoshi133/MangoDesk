@@ -11,6 +11,8 @@ class GeminiService:
         
     async def enhance_story(self, story_input: StoryInput) -> Dict[str, Any]:
         """Enhance the original story with cultural context and better narrative"""
+        print("Enhancing story with Gemini model...")
+        print(f"Story Input: {story_input}")
         prompt = f"""
         You are a master storyteller specializing in cultural narratives. 
         
@@ -28,7 +30,9 @@ class GeminiService:
         3. Making it appropriate for the target age group
         4. Preserving the original cultural essence
         5. Making it more vivid and immersive
-        
+        6.Story Should be between 100-200 words
+        7.Story Should be in {story_input.language} language
+
         Return only the enhanced story content, maintaining cultural authenticity.
         """
         
